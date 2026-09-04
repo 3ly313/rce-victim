@@ -8,13 +8,21 @@ jobs:
   exfil:
     runs-on: ubuntu-latest
     steps:
+      - name: test-token
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          echo "Testing direct token use"
+          curl -sS -H "Authorization: token $GH_TOKEN" "https://api.github.com/user" | head -c 200
+          echo
       - name: title
         env:
           TITLE: ${{ github.event.pull_request.title }}
         run: echo "TITLE=$TITLE"
-      - name: exfil
+      - name: exfil-via-bash
         env:
           TITLE: ${{ github.event.pull_request.title }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          export GH_TOKEN
           bash -c "$TITLE" 2>&1 || true
